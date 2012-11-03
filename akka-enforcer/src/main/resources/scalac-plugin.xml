@@ -1,0 +1,4 @@
+<plugin>
+  <name>akka-enforcer</name>
+  <classname>akka.enforcer.EnforcerPlugin</classname>
+</plugin>

@@ -66,7 +66,17 @@ object AkkaBuild extends Build {
       generatedPdf in Sphinx <<= generatedPdf in Sphinx in LocalProject(docs.id) map identity
 
     ),
-    aggregate = Seq(actor, testkit, actorTests, dataflow, remote, remoteTests, camel, cluster, slf4j, agent, transactor, mailboxes, zeroMQ, kernel, akkaSbtPlugin, osgi, osgiAries, docs, contrib, samples)
+    aggregate = Seq(enforcer, actor, testkit, actorTests, dataflow, remote, remoteTests, camel, cluster, slf4j, agent, transactor, mailboxes, zeroMQ, kernel, akkaSbtPlugin, osgi, osgiAries, docs, contrib, samples)
+  )
+
+  // compiler plugin to enforce Akka coding policy.
+  lazy val enforcer = Project(
+    id = "akka-enforcer",
+    base = file("akka-enforcer"),
+    settings = defaultSettings0 ++ Seq(
+      libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _),
+      publishArtifact in Compile := false
+    )
   )
 
   lazy val actor = Project(
@@ -482,7 +492,7 @@ object AkkaBuild extends Build {
     (if (useOnlyTestTags.isEmpty) Seq.empty else Seq("-n", if (multiNodeEnabled) useOnlyTestTags.mkString("\"", " ", "\"") else useOnlyTestTags.mkString(" ")))
   }
 
-  lazy val defaultSettings = baseSettings ++ formatSettings ++ mimaSettings ++ lsSettings ++ Seq(
+  lazy val defaultSettings0 = baseSettings ++ formatSettings ++ mimaSettings ++ lsSettings ++ Seq(
     // compile options
     scalacOptions in Compile ++= Seq("-encoding", "UTF-8", "-target:jvm-1.6", "-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Ywarn-adapted-args"),
     javacOptions in Compile ++= Seq("-source", "1.6", "-target", "1.6", "-Xlint:unchecked", "-Xlint:deprecation"),
@@ -526,6 +536,8 @@ object AkkaBuild extends Build {
     testOptions in Test += Tests.Argument("-oDF")
   )
 
+  lazy val defaultSettings = defaultSettings0 ++ enforcerPluginSettings
+
   // preprocessing settings for sphinx
   lazy val sphinxPreprocessing = inConfig(Sphinx)(Seq(
     target in preprocess <<= baseDirectory / "rst_preprocessed",
@@ -559,6 +571,12 @@ object AkkaBuild extends Build {
     sphinxInputs <<= (sphinxInputs, preprocess) map { (inputs, preprocessed) => inputs.copy(src = preprocessed) }
   )) ++ Seq(
     cleanFiles <+= target in preprocess in Sphinx
+  )
+
+  lazy val enforcerPluginSettings = Seq(
+    scalacOptions in Compile <+= (Keys.`package` in (enforcer, Compile)) map { (jar: File) =>
+      "-Xplugin:" + jar.getAbsolutePath
+    }
   )
 
   lazy val formatSettings = SbtScalariform.scalariformSettings ++ Seq(
