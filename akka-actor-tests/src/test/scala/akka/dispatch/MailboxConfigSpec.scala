@@ -210,7 +210,7 @@ object CustomMailboxSpec {
   }
 
   class MyMailbox(owner: ActorRef) extends UnboundedQueueBasedMessageQueue {
-    final val queue = new ConcurrentLinkedQueue[Envelope]()
+    override final val queue = new ConcurrentLinkedQueue[Envelope]()
   }
 }
 

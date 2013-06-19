@@ -213,7 +213,7 @@ object DispatcherDocSpec {
     final override def create(owner: Option[ActorRef],
                               system: Option[ActorSystem]): MessageQueue =
       new UnboundedQueueBasedMessageQueue {
-        final val queue = new ConcurrentLinkedQueue[Envelope]()
+        override final val queue = new ConcurrentLinkedQueue[Envelope]()
       }
   }
   //#mailbox-implementation-example

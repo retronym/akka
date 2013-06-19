@@ -54,7 +54,7 @@ class PeekMailboxType(settings: ActorSystem.Settings, config: Config) extends Ma
 
 class PeekMailbox(owner: ActorRef, system: ActorSystem, maxRetries: Int)
   extends UnboundedQueueBasedMessageQueue {
-  final val queue = new ConcurrentLinkedQueue[Envelope]()
+  override final val queue = new ConcurrentLinkedQueue[Envelope]()
 
   /*
    * Since the queue itself is used to determine when to schedule the actor

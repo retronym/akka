@@ -428,7 +428,7 @@ trait MultipleConsumerSemantics
  * A QueueBasedMessageQueue is a MessageQueue backed by a java.util.Queue.
  */
 trait QueueBasedMessageQueue extends MessageQueue with MultipleConsumerSemantics {
-  def queue: Queue[Envelope]
+  def queue: Queue[Envelope] = null
   def numberOfMessages = queue.size
   def hasMessages = !queue.isEmpty
   def cleanUp(owner: ActorRef, deadLetters: MessageQueue): Unit = {
@@ -462,7 +462,7 @@ trait BoundedMessageQueueSemantics {
 }
 
 trait BoundedQueueBasedMessageQueue extends QueueBasedMessageQueue with BoundedMessageQueueSemantics {
-  override def queue: BlockingQueue[Envelope]
+  override def queue: BlockingQueue[Envelope] = null
 
   def enqueue(receiver: ActorRef, handle: Envelope): Unit =
     if (pushTimeOut.length >= 0) {
@@ -486,7 +486,7 @@ trait UnboundedDequeBasedMessageQueueSemantics extends DequeBasedMessageQueueSem
 trait BoundedDequeBasedMessageQueueSemantics extends DequeBasedMessageQueueSemantics with BoundedMessageQueueSemantics
 
 trait DequeBasedMessageQueue extends QueueBasedMessageQueue with DequeBasedMessageQueueSemantics {
-  def queue: Deque[Envelope]
+  override def queue: Deque[Envelope] = null
 }
 
 /**
@@ -505,7 +505,7 @@ trait UnboundedDequeBasedMessageQueue extends DequeBasedMessageQueue with Unboun
  */
 trait BoundedDequeBasedMessageQueue extends DequeBasedMessageQueue with BoundedDequeBasedMessageQueueSemantics {
   def pushTimeOut: Duration
-  override def queue: BlockingDeque[Envelope]
+  override def queue: BlockingDeque[Envelope] = null
 
   def enqueue(receiver: ActorRef, handle: Envelope): Unit =
     if (pushTimeOut.length >= 0) {
@@ -556,7 +556,7 @@ case class UnboundedMailbox() extends MailboxType with ProducesMessageQueue[Unbo
 
 object UnboundedMailbox {
   class MessageQueue extends ConcurrentLinkedQueue[Envelope] with UnboundedQueueBasedMessageQueue {
-    final def queue: Queue[Envelope] = this
+    override final def queue: Queue[Envelope] = this
   }
 }
 
@@ -591,7 +591,7 @@ case class BoundedMailbox(val capacity: Int, val pushTimeOut: FiniteDuration)
 object BoundedMailbox {
   class MessageQueue(capacity: Int, final val pushTimeOut: FiniteDuration)
     extends LinkedBlockingQueue[Envelope](capacity) with BoundedQueueBasedMessageQueue {
-    final def queue: BlockingQueue[Envelope] = this
+    override final def queue: BlockingQueue[Envelope] = this
   }
 }
 
@@ -609,7 +609,7 @@ class UnboundedPriorityMailbox(val cmp: Comparator[Envelope], val initialCapacit
 object UnboundedPriorityMailbox {
   class MessageQueue(initialCapacity: Int, cmp: Comparator[Envelope])
     extends PriorityBlockingQueue[Envelope](initialCapacity, cmp) with UnboundedQueueBasedMessageQueue {
-    final def queue: Queue[Envelope] = this
+    override final def queue: Queue[Envelope] = this
   }
 }
 
@@ -631,7 +631,7 @@ object BoundedPriorityMailbox {
   class MessageQueue(capacity: Int, cmp: Comparator[Envelope], val pushTimeOut: Duration)
     extends BoundedBlockingQueue[Envelope](capacity, new PriorityQueue[Envelope](11, cmp))
     with BoundedQueueBasedMessageQueue {
-    final def queue: BlockingQueue[Envelope] = this
+    override final def queue: BlockingQueue[Envelope] = this
   }
 }
 
@@ -648,7 +648,7 @@ case class UnboundedDequeBasedMailbox() extends MailboxType with ProducesMessage
 
 object UnboundedDequeBasedMailbox {
   class MessageQueue extends LinkedBlockingDeque[Envelope] with UnboundedDequeBasedMessageQueue {
-    final val queue = this
+    override final val queue = this
   }
 }
 
@@ -671,7 +671,7 @@ case class BoundedDequeBasedMailbox( final val capacity: Int, final val pushTime
 object BoundedDequeBasedMailbox {
   class MessageQueue(capacity: Int, val pushTimeOut: FiniteDuration)
     extends LinkedBlockingDeque[Envelope](capacity) with BoundedDequeBasedMessageQueue {
-    final val queue = this
+    override final val queue = this
   }
 }
 

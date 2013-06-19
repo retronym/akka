@@ -6,9 +6,9 @@ package akka.dispatch;
 
 import akka.util.Unsafe;
 
-final class AbstractMailbox {
-    final static long mailboxStatusOffset;
-    final static long systemMessageOffset;
+public final class AbstractMailbox {
+    public final static long mailboxStatusOffset;
+    public final static long systemMessageOffset;
 
     static {
         try {

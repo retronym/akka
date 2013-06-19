@@ -36,11 +36,11 @@ object AkkaBuild extends Build {
 
   val enableMiMa = false
 
-  lazy val buildSettings = Seq(
+  lazy val buildSettings = Seq[Setting[_]](
     organization := "com.typesafe.akka",
     version      := "2.2-SNAPSHOT",
     // Also change ScalaVersion in akka-sbt-plugin/sample/project/Build.scala
-    scalaVersion := System.getProperty("akka.scalaVersion", "2.10.1"),
+    scalaVersion := System.getProperty("akka.scalaVersion", "2.10.2"), 
     scalaBinaryVersion <<= (scalaVersion, scalaBinaryVersion)((v, bv) => System.getProperty("akka.scalaBinaryVersion", if (v contains "-") v else bv))
   )
 
@@ -562,15 +562,15 @@ object AkkaBuild extends Build {
 
   lazy val baseSettings = Defaults.defaultSettings ++ Publish.settings
 
-  lazy val parentSettings = baseSettings ++ Seq(
+  lazy val parentSettings = baseSettings ++ Seq[Setting[_]](
     publishArtifact in Compile := false
   )
 
-  lazy val sampleSettings = defaultSettings ++ Seq(
+  lazy val sampleSettings = defaultSettings ++ Seq[Setting[_]](
     publishArtifact in (Compile, packageBin) := false
   )
 
-  lazy val experimentalSettings = Seq(
+  lazy val experimentalSettings = Seq[Setting[_]](
     description := """|This module of Akka is marked as
                       |experimental, which means that it is in early
                       |access mode, which also means that it is not covered
@@ -641,7 +641,7 @@ object AkkaBuild extends Build {
 
   lazy val defaultSettings = baseSettings ++ formatSettings ++ mimaSettings ++ lsSettings ++ Seq(
     // compile options
-    scalacOptions in Compile ++= Seq("-encoding", "UTF-8", "-target:jvm-1.6", "-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
+    scalacOptions in Compile ++= Seq("-optimize", "-encoding", "UTF-8", "-target:jvm-1.6", "-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in Compile ++= Seq("-encoding", "UTF-8", "-source", "1.6", "-target", "1.6", "-Xlint:unchecked", "-Xlint:deprecation"),
 
     // if changing this between binary and full, also change at the bottom of akka-sbt-plugin/sample/project/Build.scala
@@ -821,7 +821,7 @@ object AkkaBuild extends Build {
       file
   }
 
-  lazy val mimaSettings = mimaDefaultSettings ++ Seq(
+  lazy val mimaSettings = mimaDefaultSettings ++ Seq[Setting[_]](
     // MiMa
     previousArtifact := None
   )
@@ -933,7 +933,7 @@ object AkkaBuild extends Build {
   }
 }
 
-// Dependencies
+// Dependencies  
 
 object Dependencies {
 
