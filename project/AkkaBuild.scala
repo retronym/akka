@@ -13,6 +13,7 @@ import java.time.ZoneOffset
 import sbt.Keys._
 import sbt._
 import org.scalafmt.sbt.ScalafmtPlugin.autoImport._
+import _root_.io.github.retronym.SbtArgsFilePlugin
 
 import scala.collection.breakOut
 
@@ -26,7 +27,8 @@ object AkkaBuild {
     organization := "com.typesafe.akka",
     Dependencies.Versions,
     // use the same value as in the build scope
-    version := (version in ThisBuild).value)
+    version := (version in ThisBuild).value
+  )
 
   lazy val currentDateTime = {
     // storing the first accessed timestamp in system property so that it will be the
@@ -115,6 +117,7 @@ object AkkaBuild {
 
     // compile options
     scalacOptions in Compile ++= DefaultScalacOptions,
+    
     // Makes sure that, even when compiling with a jdk version greater than 8, the resulting jar will not refer to
     // methods not found in jdk8. To test whether this has the desired effect, compile akka-remote and check the
     // invocation of 'ByteBuffer.clear()' in EnvelopeBuffer.class with 'javap -c': it should refer to
@@ -128,6 +131,8 @@ object AkkaBuild {
     scalacOptions in Compile ++= (if (allWarnings) Seq("-deprecation") else Nil),
     scalacOptions in Test := (scalacOptions in Test).value.filterNot(opt =>
       opt == "-Xlog-reflective-calls" || opt.contains("genjavadoc")),
+    SbtArgsFilePlugin.argsFileMacroClasspath in Compile := Some(macroClassPathFilter),
+    SbtArgsFilePlugin.argsFileMacroClasspath in Test := Some(macroClassPathFilter),
     javacOptions in compile ++= DefaultJavacOptions ++ JavaVersion.sourceAndTarget(CrossJava.Keys.fullJavaHomes.value("8")),
     javacOptions in test ++= DefaultJavacOptions ++ JavaVersion.sourceAndTarget(CrossJava.Keys.fullJavaHomes.value("8")),
     javacOptions in compile ++= (if (allWarnings) Seq("-Xlint:deprecation") else Nil),
@@ -237,6 +242,12 @@ object AkkaBuild {
     docLintingSettings,
     CrossJava.crossJavaSettings,
   )
+
+  def macroClassPathFilter = {(f: File) =>
+    val n = f.getName
+    n.contains("scalactic") || n.contains("scalatest")
+  }
+
 
   lazy val docLintingSettings = Seq(
     javacOptions in compile ++= Seq("-Xdoclint:none"),
