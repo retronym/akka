@@ -9,7 +9,7 @@ import java.util.concurrent.ThreadFactory
 import java.util.concurrent.atomic.{ AtomicLong, AtomicReference }
 
 import scala.annotation.tailrec
-import scala.collection.immutable
+import scala.collection.{ immutable, mutable }
 import scala.concurrent.{ Await, ExecutionContext, Future, Promise }
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
@@ -215,9 +215,9 @@ class LightArrayRevolverScheduler(config: Config, log: LoggingAdapter, threadFac
         s"Task scheduled with [${delayNanos.nanos.toSeconds}] seconds delay, " +
         s"which is too far in future, maximum delay is [${(tickNanos * Int.MaxValue).nanos.toSeconds - 1}] seconds")
 
-  private val stopped = new AtomicReference[Promise[immutable.Seq[TimerTask]]]
-  private def stop(): Future[immutable.Seq[TimerTask]] = {
-    val p = Promise[immutable.Seq[TimerTask]]()
+  private val stopped = new AtomicReference[Promise[collection.Seq[TimerTask]]]
+  private def stop(): Future[collection.Seq[TimerTask]] = {
+    val p = Promise[collection.Seq[TimerTask]]()
     if (stopped.compareAndSet(null, p)) {
       // Interrupting the timer thread to make it shut down faster is not good since
       // it could be in the middle of executing the scheduled tasks, which might not
@@ -234,14 +234,18 @@ class LightArrayRevolverScheduler(config: Config, log: LoggingAdapter, threadFac
     val wheel = Array.fill(WheelSize)(new TaskQueue)
     var spareTaskQueue = new TaskQueue
 
-    private def clearAll(): immutable.Seq[TimerTask] = {
-      @tailrec def collect(q: TaskQueue, acc: Vector[TimerTask]): Vector[TimerTask] = {
+    private def clearAll(): collection.Seq[TimerTask] = {
+      val stopped = mutable.ArrayBuffer[TimerTask]()
+
+      @tailrec def collect(q: TaskQueue): Unit = {
         q.poll() match {
-          case null => acc
-          case x    => collect(q, acc :+ x)
+          case null =>
+          case x    => stopped += x; collect(q)
         }
       }
-      (0 until WheelSize).flatMap(i => collect(wheel(i), Vector.empty)) ++ collect(queue, Vector.empty)
+      (0 until WheelSize).foreach(i => collect(wheel(i)))
+      collect(queue)
+      stopped
     }
 
     @tailrec
