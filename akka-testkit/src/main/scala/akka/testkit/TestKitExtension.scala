@@ -29,4 +29,12 @@ class TestKitSettings(val config: Config) extends Extension {
   val ExpectNoMessageDefaultTimeout: FiniteDuration = config.getMillisDuration("akka.test.expect-no-message-default")
   val TestEventFilterLeeway: FiniteDuration = config.getMillisDuration("akka.test.filter-leeway")
   val DefaultTimeout: Timeout = Timeout(config.getMillisDuration("akka.test.default-timeout"))
+
+  val DebuggerCompensation: Boolean = config.getBoolean("akka.test.debugger-compensation")
+  val DebuggerDetectionIntervalMs: Long =
+    config.getMillisDuration("akka.test.debugger-detection-interval").toMillis
+
+  val suspensionDetector: JvmSuspensionDetector =
+    if (DebuggerCompensation) new JvmSuspensionDetector(intervalMs = DebuggerDetectionIntervalMs)
+    else JvmSuspensionDetector.Disabled
 }
