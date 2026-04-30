@@ -230,9 +230,11 @@ trait TestKitBase {
   def setAutoPilot(pilot: TestActor.AutoPilot): Unit = testActor ! TestActor.SetAutoPilot(pilot)
 
   /**
-   * Obtain current time (`System.nanoTime`) as Duration.
+   * Obtain current time as a Duration, adjusted to exclude any JVM suspension
+   * time detected by the [[JvmSuspensionDetector]] (e.g. debugger breakpoints).
+   * When debugger compensation is disabled the value equals `System.nanoTime`.
    */
-  def now: FiniteDuration = System.nanoTime.nanos
+  def now: FiniteDuration = (System.nanoTime() - testKitSettings.suspensionDetector.totalSuspendedNanos).nanos
 
   /**
    * Obtain time remaining for execution of the innermost enclosing `within`
@@ -723,10 +725,11 @@ trait TestKitBase {
     expectNoMsg_internal(testKitSettings.ExpectNoMessageDefaultTimeout.dilated)
 
   private def expectNoMsg_internal(max: FiniteDuration): Unit = {
-    val finish = System.nanoTime() + max.toNanos
+    // Use adjusted `now` so that JVM suspension time is excluded from the wait.
+    val finishAdjusted = now.toNanos + max.toNanos
     val pollInterval = 100.millis
 
-    def leftNow = (finish - System.nanoTime()).nanos
+    def leftNow = (finishAdjusted - now.toNanos).nanos
 
     var elem: AnyRef = queue.peekFirst()
     var left = leftNow
@@ -825,6 +828,40 @@ trait TestKitBase {
   }
 
   /**
+   * Poll the queue using short intervals so the adjusted deadline (which excludes
+   * JVM suspension time) is re-evaluated after each interval. This allows the
+   * timeout to be extended transparently when the JVM is suspended at a breakpoint.
+   * A single grace period of one detector interval is allowed after the first
+   * apparent expiry, giving the suspension detector thread time to update its count.
+   */
+  private def pollWithSuspensionAwareness(max: FiniteDuration): Message = {
+    val detector = testKitSettings.suspensionDetector
+    val checkIntervalNanos = (detector.intervalMs / 2) * 1_000_000L
+    // Deadline expressed in adjusted-clock space: excludes suspension time.
+    val adjustedDeadlineNanos = now.toNanos + max.toNanos
+
+    @annotation.tailrec
+    def loop(graceUsed: Boolean): Message = {
+      val remaining = adjustedDeadlineNanos - now.toNanos
+      if (remaining <= 0L) {
+        if (!graceUsed && detector.isEnabled) {
+          // Wait one interval for the suspension detector to update its count,
+          // then retry once in case the deadline was extended by a suspension.
+          Thread.sleep(detector.intervalMs)
+          loop(graceUsed = true)
+        } else null
+      } else {
+        val waitNanos = remaining min checkIntervalNanos
+        val result = queue.pollFirst(waitNanos, TimeUnit.NANOSECONDS)
+        if (result ne null) result
+        else loop(graceUsed = false)
+      }
+    }
+
+    loop(graceUsed = false)
+  }
+
+  /**
    * Receive one message from the internal queue of the TestActor. If the given
    * duration is zero, the queue is polled (non-blocking).
    *
@@ -835,7 +872,7 @@ trait TestKitBase {
       if (max == 0.seconds) {
         queue.pollFirst
       } else if (max.isFinite) {
-        queue.pollFirst(max.length, max.unit)
+        pollWithSuspensionAwareness(max.asInstanceOf[FiniteDuration])
       } else {
         queue.takeFirst
       }
